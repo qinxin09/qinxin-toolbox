@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script> -->
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body,html {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body style="background-color: rgb(242, 242, 242);">
+    <div id="app" ref="app" style="height:90vh;width:100%;" :style="{backgroundColor:appBgColor2}">
+        <el-link type="primary" :underline="false">选择png才有效果</el-link>
+        <el-row>
+
+            <el-col :span="16">
+                <img :src="imgSrc" style="max-height: 300px;object-fit: contain;"
+                    :style="{filter: 'drop-shadow(0px 200px 0px '+shadowColor2+')',height:height*scale+'px',width:width*scale+'px'}">
+
+                <div ref="canvas" style="display: none;"></div>
+                <input type="file" ref="imgInput" style="display: none;" @change="handleFileChange" accept="image/*">
+
+            </el-col>
+            <el-col :span="8" style="text-align: right;">
+                <div style="width:60%;text-align: right;display: inline-block;margin: 10px;">
+                    <el-form style="background-color: #eaeaea;border:1px solid gray;border-radius: 10px;padding:10px;">
+                        <el-form-item label="背景颜色">
+                            <el-color-picker v-model="appBgColor" show-alpha size="medium"
+                                @active-change="(v)=>{appBgColor2=v;}"></el-color-picker>
+                        </el-form-item>
+                        <el-form-item label="填充颜色">
+                            <el-color-picker v-model="shadowColor" show-alpha size="medium"
+                                @active-change="handleShadow"></el-color-picker>
+                        </el-form-item>
+                        <el-form-item label="缩放">
+                            <el-input-number v-model="scale" :min="0.1" :max="10" :step="0.1" label="缩放"></el-input-number>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button-group>
+                                <el-button @click="$refs['imgInput'].click()">选择图片</el-button>
+                                <el-button @click="saveImg">下载</el-button>
+                            </el-button-group>
+                        </el-form-item>
+                    </el-form>
+                </div>
+            </el-col>
+        </el-row>
+
+    </div>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                appBgColor: "#FFFFFF",
+                shadowColor: "rgba(98, 131, 179, 1)",
+                appBgColor2: "#FFFFFF",
+                shadowColor2: "rgba(98, 131, 179, 1)",
+                timer: null,
+                imgSrc: "./img.png",//图片链接
+                scale:1,
+                height:100,
+                width:100,
+            },
+            mounted(){
+                this.handleImgChange();
+            },
+
+            methods: {
+                handleImgChange(){
+                    let img = new Image();
+                    img.src = this.imgSrc;
+                    img.onload = () => {
+                        this.height = img.height;
+                        this.width = img.width;
+                    }
+                },
+                
+                handleShadow(v) {
+                    this.shadowColor2 = v;
+                },
+                handleFileChange(e) {
+                    let file = e.target.files[0];
+                    console.error(file);
+                    let reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.handleImgChange();
+                        this.imgSrc = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                },
+                saveImg() {
+                    // rgba (98, 131, 179, 1)
+                    let rgbArr = this.shadowColor2.slice(5, -1).split(',');
+                    if (this.timer) {
+                        clearTimeout(this.timer);
+                    }
+                    this.timer = setTimeout(() => {
+                        let r = rgbArr[0];
+                        let g = rgbArr[1];
+                        let b = rgbArr[2];
+                        this.fillImg(r, g, b);
+                    }, 100)
+                },
+                fillImg(r, g, b) {
+                    let img = new Image();
+                    img.onload = () => {
+                        let canvas = document.createElement('canvas');
+                        let ctx = canvas.getContext('2d');
+                        // canvas.width = img.width;
+                        // canvas.height = img.height;
+                        console.log(this.width,this.height,this.scale);
+                        // if(img.height<100 || img.width<100){
+                        //     canvas.width*=2;
+                        //     canvas.height*=2;
+                        //     ctx.drawImage(img, 0, 0,img.width*2,img.height*2);
+                        // }else{
+                        //    ctx.drawImage(img, 0, 0); 
+                        // }
+                        
+                        canvas.width = this.width*this.scale;
+                        canvas.height = this.height*this.scale;
+                        ctx.drawImage(img, 0, 0,this.width*this.scale,this.height*this.scale);
+
+                        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        let data = imageData.data;
+
+                        // for (let i = 0; i < data.length; i += 4) {
+                        //     let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        //     data[i] = avg; // red  
+                        //     data[i + 1] = avg; // green  
+                        //     data[i + 2] = avg; // blue  
+                        // }
+
+
+                        for (let i = 0; i < data.length; i += 4) {
+                            data[i] = r; // red  
+                            data[i + 1] = g; // green  
+                            data[i + 2] = b; // blue  
+                        }
+
+                        ctx.putImageData(imageData, 0, 0);
+
+
+                        //展示
+                        // if(this.$refs["canvas"]){
+                        //     this.$refs["canvas"].innerHTML="";
+                        //     this.$refs["canvas"].appendChild(canvas);
+                        // }
+                        // document.body.appendChild(canvas);
+
+
+                        //下载
+                        let a = document.createElement('a');
+                        a.href = canvas.toDataURL('image/png');
+                        a.download = 'image1.png';
+                        a.click();
+                        document.body.appendChild(a);
+                    };
+                    img.src = this.imgSrc;
+                }
+            }
+            
+        })
+
+    </script>
+</body>
+
+</html>
+
+<!-- filter:drop-shadow(h-shadow v-shadow blur spread color);
+h-shadow:offset-x，设置水平方向阴影偏移量，赋值会使阴影出现元素左边。必选
+
+v-shadow:offset-y，设置垂直方向阴影偏移量，赋值会使阴影出现再元素上方。必选
+
+blur：设置模糊效果，值越大，越模糊，默认值是0。可选
+
+spread：控制阴影，正直会使阴影扩张和变大，赋值会使阴影缩小，默认值为0.可选
+
+color：设置阴影颜色。可选
+-->
